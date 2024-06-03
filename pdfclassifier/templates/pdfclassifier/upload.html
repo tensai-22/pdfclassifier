@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Clasificador de notificaciones</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            max-width: 400px;
+        }
+        label, input, button {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clasificador de notificaciones</h1>
+    <form action="{% url 'predict_pdf' %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="pdf">Subir PDF:</label>
+        <input type="file" id="pdf" name="pdf" accept="application/pdf" required>
+        <button type="submit">Subir PDF</button>
+    </form>
+</body>
+</html>

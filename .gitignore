@@ -5,3 +5,9 @@ db.sqlite3
 .DS_Store
 media/
 staticfiles/
+# Ignore Python cache files
+__pycache__/
+*.py[cod]
+
+# Ignore virtual environment directories
+venv/

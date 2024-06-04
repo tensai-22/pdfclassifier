@@ -68,8 +68,8 @@ def predict_pdf(request):
         processed_text = procesar_texto(text)
         
         # Cargar el modelo y el vectorizador guardados
-        classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.pkl'))
-        vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.pkl'))
+        classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
+        vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
         
         X_new = vectorizer.transform([processed_text])
         prediction = classifier.predict(X_new)
@@ -89,7 +89,7 @@ def predict_pdf(request):
 
 # Vista para entrenar el modelo
 def train_model(request):
-    directory = r'C:\Users\user\OneDrive\Desktop\DJANGO\clasificador\TextosExtraidos-20240530T174421Z-001\TextosExtraidos'
+    directory = r'C:\Users\user\OneDrive\Desktop\DJANGO\clasificador\TextosExtraidos-20240603T215751Z-001\TextosExtraidos'
     
     texts = []
     labels = []
@@ -116,7 +116,7 @@ def train_model(request):
     accuracy = accuracy_score(y_test, y_pred)
     
     # Guardar el modelo entrenado y el vectorizador en un archivo
-    joblib.dump(classifier, os.path.join(settings.BASE_DIR, 'classifier.pkl'))
-    joblib.dump(vectorizer, os.path.join(settings.BASE_DIR, 'vectorizer.pkl'))
+    joblib.dump(classifier, os.path.join(settings.BASE_DIR, 'classifier.joblib'))
+    joblib.dump(vectorizer, os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
     
     return JsonResponse({'accuracy': accuracy})

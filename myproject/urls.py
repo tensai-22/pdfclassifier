@@ -9,6 +9,5 @@ def root_view(request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('pdfclassifier/', include('pdfclassifier.urls')),
-    path('project1/', include('project1.urls')),
     path('', root_view, name='root'),
 ]

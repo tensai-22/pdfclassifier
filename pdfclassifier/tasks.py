@@ -3,6 +3,8 @@ import os
 import fitz  # PyMuPDF para manejar PDFs
 from django.conf import settings
 import joblib
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
 
 @shared_task
 def process_pdf(pdf_path):

@@ -8,12 +8,9 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import joblib
 from django.views.decorators.csrf import csrf_exempt
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
 from zipfile import ZipFile
 from io import BytesIO
+from .tasks import process_pdf
 
 # Asegúrate de que los paquetes necesarios de NLTK estén disponibles
 nltk.download('punkt')
@@ -54,10 +51,11 @@ def predict_pdf(request):
             return JsonResponse({'error': 'No files provided'}, status=400)
         
         pdf_files = request.FILES.getlist('pdfs')
-        classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
-        vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
         
+        # Crear buffer para almacenar el archivo ZIP en memoria
         zip_buffer = BytesIO()
+        
+        # Crear el archivo ZIP
         with ZipFile(zip_buffer, 'w') as zip_file:
             for pdf_file in pdf_files:
                 temp_path = os.path.join(settings.BASE_DIR, pdf_file.name)
@@ -65,16 +63,10 @@ def predict_pdf(request):
                     for chunk in pdf_file.chunks():
                         destination.write(chunk)
 
-                text = extract_text_from_pdf(temp_path)
-                processed_text = procesar_texto(text)
-                X_new = vectorizer.transform([processed_text])
-                prediction = classifier.predict(X_new)
-                predicted_label = prediction[0]
-                new_filename = f"{predicted_label} {pdf_file.name}"
-                new_path = os.path.join(settings.BASE_DIR, new_filename)
-                os.rename(temp_path, new_path)
-                zip_file.write(new_path, new_filename)
-                os.remove(new_path)
+                # Procesar el PDF y obtener el nombre de archivo clasificado
+                new_filename = process_pdf.delay(temp_path)
+                zip_file.write(new_filename, new_filename)
+                os.remove(temp_path)
 
         response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')
         response['Content-Disposition'] = 'attachment; filename="classified_pdfs.zip"'

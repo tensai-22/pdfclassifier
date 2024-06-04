@@ -1,4 +1,5 @@
 import os
+import zipfile
 import fitz  # PyMuPDF para manejar PDFs
 import nltk
 from django.shortcuts import render
@@ -12,8 +13,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
-from zipfile import ZipFile
-from io import BytesIO
 
 # Paquetes necesarios de NLTK estén disponibles
 nltk.download('punkt')
@@ -50,50 +49,49 @@ def upload_pdf(request):
         print(f"Error al renderizar la plantilla: {e}")
         return HttpResponse(f"Error al renderizar la plantilla: {e}")
 
-# Vista para predecir la clasificación de múltiples PDFs
+# Vista para predecir la clasificación de nuevos PDFs
 @csrf_exempt
 def predict_pdf(request):
     if request.method == 'POST':
         if 'pdf' not in request.FILES:
             return JsonResponse({'error': 'No files provided'}, status=400)
-        
+
         pdf_files = request.FILES.getlist('pdf')
-        zip_buffer = BytesIO()
-        
-        with ZipFile(zip_buffer, 'w') as zip_file:
+        zip_filename = 'classified_pdfs.zip'
+        zip_path = os.path.join(settings.BASE_DIR, zip_filename)
+
+        with zipfile.ZipFile(zip_path, 'w') as pdf_zip:
             for pdf_file in pdf_files:
                 temp_path = os.path.join(settings.BASE_DIR, pdf_file.name)
-                
+
                 with open(temp_path, 'wb+') as destination:
                     for chunk in pdf_file.chunks():
                         destination.write(chunk)
-                
+
                 text = extract_text_from_pdf(temp_path)
                 processed_text = procesar_texto(text)
-                
+
                 # Cargar el modelo y el vectorizador guardados
                 classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
                 vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
-                
+
                 X_new = vectorizer.transform([processed_text])
                 prediction = classifier.predict(X_new)
-                
+
                 predicted_label = prediction[0]
                 new_filename = f"{predicted_label} {pdf_file.name}"
                 new_path = os.path.join(settings.BASE_DIR, new_filename)
-                
+
                 os.rename(temp_path, new_path)
-                
-                with open(new_path, 'rb') as file:
-                    zip_file.writestr(new_filename, file.read())
-                
+
+                pdf_zip.write(new_path, new_filename)
                 os.remove(new_path)
-        
-        zip_buffer.seek(0)
-        response = HttpResponse(zip_buffer, content_type='application/zip')
-        response['Content-Disposition'] = 'attachment; filename=classified_pdfs.zip'
-        return response
-    
+
+        with open(zip_path, 'rb') as zip_file:
+            response = HttpResponse(zip_file.read(), content_type='application/zip')
+            response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+            return response
+
     return HttpResponse("Método no permitido", status=405)
 
 # Vista para entrenar el modelo

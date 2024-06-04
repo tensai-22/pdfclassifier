@@ -31,7 +31,7 @@ def guardar_texto_en_archivo(texto, ruta_destino, nombre_archivo):
         archivo_texto.write(texto)  # Escribe el texto en el archivo
 
 # Directorio que contiene los PDFs
-directorio_pdfs = r'C:\Users\user\OneDrive\Desktop\DJANGO\clasificador\TextosExtraidos-20240530T174421Z-001\TextosExtraidos'
+directorio_pdfs = r'C:\Users\user\OneDrive\Desktop\DJANGO\clasificador\TextosExtraidos-20240603T215751Z-001\TextosExtraidos'
 
 print("Iniciando el procesamiento de archivos PDF...")
 # Procesar todos los archivos PDF en el directorio y subdirectorios

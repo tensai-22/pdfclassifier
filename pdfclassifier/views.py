@@ -1,17 +1,19 @@
 import os
-import zipfile
 import fitz  # PyMuPDF para manejar PDFs
 import nltk
 from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponse
 from django.conf import settings
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 import joblib
 from django.views.decorators.csrf import csrf_exempt
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
+import zipfile
+import io
 
 # Paquetes necesarios de NLTK estén disponibles
 nltk.download('punkt')
@@ -48,42 +50,46 @@ def upload_pdf(request):
         print(f"Error al renderizar la plantilla: {e}")
         return HttpResponse(f"Error al renderizar la plantilla: {e}")
 
-# Vista para predecir la clasificación de un nuevo PDF
+# Vista para predecir la clasificación de nuevos PDFs
 @csrf_exempt
 def predict_pdf(request):
     if request.method == 'POST':
-        if not request.FILES.getlist('pdfs'):
+        if 'pdfs' not in request.FILES:
             return JsonResponse({'error': 'No files provided'}, status=400)
         
         pdf_files = request.FILES.getlist('pdfs')
-        zip_filename = 'classified_pdfs.zip'
-        zip_path = os.path.join(settings.BASE_DIR, zip_filename)
-
-        classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
-        vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
-
-        with zipfile.ZipFile(zip_path, 'w') as zipf:
+        zip_buffer = io.BytesIO()
+        
+        with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as zf:
             for pdf_file in pdf_files:
-                temp_path = os.path.join(settings.BASE_DIR, pdf_file.name)
+                temp_path = os.path.join(settings.BASE_DIR, 'temp.pdf')
                 with open(temp_path, 'wb+') as destination:
                     for chunk in pdf_file.chunks():
                         destination.write(chunk)
                 
                 text = extract_text_from_pdf(temp_path)
                 processed_text = procesar_texto(text)
-
+                
+                # Cargar el modelo y el vectorizador guardados
+                classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
+                vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
+                
                 X_new = vectorizer.transform([processed_text])
                 prediction = classifier.predict(X_new)
+                
                 predicted_label = prediction[0]
                 new_filename = f"{predicted_label} {pdf_file.name}"
+                new_path = os.path.join(settings.BASE_DIR, new_filename)
                 
-                zipf.write(temp_path, new_filename)
-                os.remove(temp_path)
-
-        with open(zip_path, 'rb') as file:
-            response = HttpResponse(file.read(), content_type='application/zip')
-            response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
-            return response
+                os.rename(temp_path, new_path)
+                
+                with open(new_path, 'rb') as file:
+                    zf.writestr(new_filename, file.read())
+        
+        zip_buffer.seek(0)
+        response = HttpResponse(zip_buffer, content_type='application/zip')
+        response['Content-Disposition'] = 'attachment; filename="classified_pdfs.zip"'
+        return response
     
     return HttpResponse("Método no permitido", status=405)
 

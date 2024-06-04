@@ -9,7 +9,6 @@ from nltk.tokenize import word_tokenize
 import joblib
 from django.views.decorators.csrf import csrf_exempt
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import zipfile
@@ -28,11 +27,14 @@ def procesar_texto(texto, idioma='spanish'):
     return texto_procesado
 
 # Función para extraer texto de un PDF
-def extract_text_from_pdf(pdf_path):
+def extract_text_from_pdf(pdf_file):
     text = ""
-    with fitz.open(pdf_path) as pdf:
+    try:
+        pdf = fitz.open(stream=pdf_file.read(), filetype="pdf")
         for page in pdf:
             text += page.get_text()
+    except Exception as e:
+        print(f"Error al procesar {pdf_file.name}: {e}")
     return text
 
 # Vista principal
@@ -60,31 +62,23 @@ def predict_pdf(request):
         pdf_files = request.FILES.getlist('pdfs')
         zip_buffer = io.BytesIO()
         
+        # Cargar el modelo y el vectorizador guardados
+        classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
+        vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
+
         with zipfile.ZipFile(zip_buffer, 'a', zipfile.ZIP_DEFLATED) as zf:
             for pdf_file in pdf_files:
-                temp_path = os.path.join(settings.BASE_DIR, 'temp.pdf')
-                with open(temp_path, 'wb+') as destination:
-                    for chunk in pdf_file.chunks():
-                        destination.write(chunk)
-                
-                text = extract_text_from_pdf(temp_path)
+                text = extract_text_from_pdf(pdf_file)
                 processed_text = procesar_texto(text)
-                
-                # Cargar el modelo y el vectorizador guardados
-                classifier = joblib.load(os.path.join(settings.BASE_DIR, 'classifier.joblib'))
-                vectorizer = joblib.load(os.path.join(settings.BASE_DIR, 'vectorizer.joblib'))
                 
                 X_new = vectorizer.transform([processed_text])
                 prediction = classifier.predict(X_new)
                 
                 predicted_label = prediction[0]
                 new_filename = f"{predicted_label} {pdf_file.name}"
-                new_path = os.path.join(settings.BASE_DIR, new_filename)
                 
-                os.rename(temp_path, new_path)
-                
-                with open(new_path, 'rb') as file:
-                    zf.writestr(new_filename, file.read())
+                pdf_file.seek(0)  # Reset the file pointer to the beginning
+                zf.writestr(new_filename, pdf_file.read())
         
         zip_buffer.seek(0)
         response = HttpResponse(zip_buffer, content_type='application/zip')

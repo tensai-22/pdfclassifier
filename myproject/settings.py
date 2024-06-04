@@ -6,13 +6,12 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'your-secret-key-here'
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['pdfclassifier.onrender.com', 'localhost', '127.0.0.1']
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'pdfclassifier.onrender.com,localhost,127.0.0.1').split(',')
 
 # Application definition
 
@@ -24,6 +23,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'pdfclassifier',
+    'django_celery_results',  # Para almacenar los resultados de Celery en la base de datos
 ]
 
 MIDDLEWARE = [
@@ -104,5 +104,17 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Whitenoise configuration
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# Celery configuration
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+
+# Django Celery Results configuration
+CELERY_RESULT_BACKEND = 'django-db'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

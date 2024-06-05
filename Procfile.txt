@@ -1,2 +1,2 @@
 web: gunicorn myproject.wsgi
-release: python manage_tasks.py
+worker: celery -A myproject worker --loglevel=info

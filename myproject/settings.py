@@ -107,5 +107,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Celery Configuration Options
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://red-cpfoc40l5elc738anq5g:6379/0'
 CELERY_RESULT_BACKEND = 'django-db'
+
+# Redis configuration for Celery
+CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://red-cpfoc40l5elc738anq5g:6379')
+CELERY_RESULT_BACKEND = os.getenv('REDIS_URL', 'redis://red-cpfoc40l5elc738anq5g:6379')

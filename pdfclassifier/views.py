@@ -64,8 +64,9 @@ def predict_pdf(request):
                         destination.write(chunk)
 
                 # Procesar el PDF y obtener el nombre de archivo clasificado
-                new_filename = process_pdf.delay(temp_path)
-                zip_file.write(new_filename, new_filename)
+                result = process_pdf.delay(temp_path)
+                new_filename = result.get(timeout=30)  # Esperar a que la tarea termine
+                zip_file.write(os.path.join(settings.BASE_DIR, new_filename), new_filename)
                 os.remove(temp_path)
 
         response = HttpResponse(zip_buffer.getvalue(), content_type='application/zip')

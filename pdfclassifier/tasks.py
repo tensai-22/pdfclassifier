@@ -3,8 +3,12 @@ import os
 import fitz  # PyMuPDF para manejar PDFs
 from django.conf import settings
 import joblib
-from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+import nltk
+
+nltk.download('punkt')
+nltk.download('stopwords')
 
 @shared_task
 def process_pdf(pdf_path):
